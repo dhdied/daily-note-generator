@@ -35,3 +35,43 @@ def save_daily_note(content: str, date_obj: datetime) -> Path:
     except Exception as e:
         logging.error(f"Ошибка при сохранении файла {filename}: {e}", exc_info=True)
         return None
+    
+def transfering_tasks(yesterday_obj: datetime) -> str:
+    '''
+    Построчно читает вчерашнюю заметку и вытаскивает невыполненные задачи,
+    используя паттер "конечный автомат"
+    '''
+    filename = generate_note_name(yesterday_obj)
+    filepath = OBSIDIAN_DAILY_DIR / filename
+
+    if not filepath.exists():
+        logging.info(f"Вчерашняя заметка {filename} не найдена. Перенос задач пропущен.")
+        return ""
+    
+    unfinished_tasks = []
+    is_collecting = False
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            for line in file:
+                clean_line = line.strip()
+
+                if clean_line.startswith("## 🎯 Задачи на день"):
+                    is_collecting = True
+                    continue
+
+                if is_collecting:
+                    if clean_line == "" or clean_line.startswith("##"):
+                        break
+
+                    if clean_line.startswith("- [ ] "):
+                        unfinished_tasks.append(clean_line)
+
+        if unfinished_tasks:
+            return "\n".join(unfinished_tasks)
+        else:
+            return ""
+        
+    except Exception as e:
+        logging.error(f"Ошибка при чтении файла {filename}: {e}", exc_info=True)
+        return ""

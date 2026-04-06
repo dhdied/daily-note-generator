@@ -1,8 +1,8 @@
 import sys
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import LOG_FILE_PATH
-from obsidian_ops import save_daily_note
+from obsidian_ops import save_daily_note, transfering_tasks
 
 RU_WEEKDAYS = {
     0: "Понедельник",
@@ -37,13 +37,21 @@ def setup_logging():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-def generate_base_template(date_obj: datetime) -> str:
+def generate_base_template(date_obj: datetime, carried_tasks: str = "") -> str:
     '''
     Генерирует базовый шаблон с YAML Frontmatter для Dataview
     '''
     date_iso = date_obj.strftime("%Y-%m-%d")
     weekday_ru = RU_WEEKDAYS[date_obj.weekday()]
     week_number = date_obj.strftime("%V")
+
+    yesterday_obj = date_obj - timedelta(days=1)
+    tomorrow_obj = date_obj + timedelta(days=1)
+
+    yesterday_iso = yesterday_obj.strftime("%Y-%m-%d")
+    tomorrow_iso = tomorrow_obj.strftime("%Y-%m-%d")
+
+    tasks_block = carried_tasks if carried_tasks else "- [ ] \n- [ ] \n- [ ] "
 
     template = f'''---
 date: {date_iso}
@@ -56,10 +64,10 @@ tags: [daily]
 ---
 # 📅 {date_iso} | {weekday_ru}
 
+<< [[{yesterday_iso}|Предыдущий день]] | [[{tomorrow_iso}|Следующий день]] >> 
+
 ## 🎯 Задачи на день
-- [ ] 
-- [ ] 
-- [ ] 
+{tasks_block}
 
 ## 🌇 Рефлексия
 ### Главное событие дня:
@@ -77,9 +85,16 @@ def main():
     try:
         # Здесь будет основная логика программы
         today = datetime.now()
+        yesterday = today - timedelta(days=1)
+
+        logging.info("Анализ отложенных задач...")
+        carried_tasks = transfering_tasks(yesterday)
+
+        if carried_tasks:
+            logging.info(f"Найдено задач для переноса:\n{carried_tasks}")
 
         logging.info("Сборка базового шаблона...")
-        note_content = generate_base_template(today)
+        note_content = generate_base_template(today, carried_tasks)
 
         logging.info("Сохранение файла в Obsidian...")
         saved_path = save_daily_note(note_content, today)
