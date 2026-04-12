@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from config import LOG_FILE_PATH
 from obsidian_ops import save_daily_note, transfering_tasks
+from integrations import get_weather, get_quote, get_exchange_rates
 
 RU_WEEKDAYS = {
     0: "Понедельник",
@@ -37,7 +38,7 @@ def setup_logging():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-def generate_base_template(date_obj: datetime, carried_tasks: str = "") -> str:
+def generate_base_template(date_obj: datetime, carried_tasks: str = "", weather_info: str = "", quote_info: str = "", rates_info: str = "") -> str:
     '''
     Генерирует базовый шаблон с YAML Frontmatter для Dataview
     '''
@@ -66,6 +67,12 @@ tags: [daily]
 
 << [[{yesterday_iso}|Предыдущий день]] | [[{tomorrow_iso}|Следующий день]] >> 
 
+> *{quote_info}*
+
+## 🌍 Контекст
+- **Погода**: {weather_info}
+- **Валюта**: {rates_info}
+
 ## 🎯 Задачи на день
 {tasks_block}
 
@@ -93,8 +100,13 @@ def main():
         if carried_tasks:
             logging.info(f"Найдено задач для переноса:\n{carried_tasks}")
 
+        logging.info("Сбор внешних данных (API)...")
+        current_weather = get_weather()
+        current_quote = get_quote()
+        current_rates = get_exchange_rates()
+
         logging.info("Сборка базового шаблона...")
-        note_content = generate_base_template(today, carried_tasks)
+        note_content = generate_base_template(today, carried_tasks, current_weather, current_quote, current_rates)
 
         logging.info("Сохранение файла в Obsidian...")
         saved_path = save_daily_note(note_content, today)
