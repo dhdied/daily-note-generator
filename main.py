@@ -1,6 +1,8 @@
+import asyncio
 import sys
 import logging
 from datetime import datetime, timedelta
+
 from config import LOG_FILE_PATH
 from obsidian_ops import save_daily_note, transfering_tasks
 from integrations import get_weather, get_quote, get_exchange_rates
@@ -85,39 +87,41 @@ tags: [daily]
 '''
     return template
 
-def main():
+async def run_generator():
+    '''
+    Ассинхронная генерация
+    '''
     setup_logging()
-    logging.info("Запуск генератора ежедневных заметок")
+    logging.info("Запуск ассинхронного генератора...")
 
     try:
-        # Здесь будет основная логика программы
         today = datetime.now()
         yesterday = today - timedelta(days=1)
 
         logging.info("Анализ отложенных задач...")
         carried_tasks = transfering_tasks(yesterday)
 
-        if carried_tasks:
-            logging.info(f"Найдено задач для переноса:\n{carried_tasks}")
+        logging.info("Параллельный сбор данных из API...")
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            weather_task = get_weather(session)
+            quote_task = get_quote(session)
+            rates_task = get_exchange_rates(session)
 
-        logging.info("Сбор внешних данных (API)...")
-        current_weather = get_weather()
-        current_quote = get_quote()
-        current_rates = get_exchange_rates()
+            weather, quote, rates = await asyncio.gather(
+                weather_task, quote_task, rates_task
+            )
 
-        logging.info("Сборка базового шаблона...")
-        note_content = generate_base_template(today, carried_tasks, current_weather, current_quote, current_rates)
-
-        logging.info("Сохранение файла в Obsidian...")
+        logging.info("Сборка и сохранение заметки...")
+        note_content = generate_base_template(today, carried_tasks, weather, quote, rates)
         saved_path = save_daily_note(note_content, today)
 
         if saved_path:
             logging.info("Генерация успешно завершена!")
-        else:
-            logging.warning("Заметка не была сохранена (возможно, уже существует).")
-    
+
     except Exception as e:
-        logging.error(f"Произошла ошибка: {e}", exc_info=True)
+        logging.error(f"Критическая ошибка: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_generator())
