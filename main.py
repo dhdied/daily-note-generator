@@ -75,6 +75,64 @@ tags: [daily]
 - **Погода**: {weather_info}
 - **Валюта**: {rates_info}
 
+## 📈 Аналитика состояния
+
+> [!chart]+ График сна и энергии (7 дней)
+> ```dataviewjs
+> const pages = dv.pages("#daily")
+>     .filter(p => p.date <= dv.current().date && p.date > dv.current().date.minus({{ days: 7 }}))
+>     .sort(p => p.date);
+>
+> const dates = pages.map(p => p.date.toFormat("dd.MM")).array();
+> const sleepData = pages.map(p => p.sleep_hours || 0).array();
+> const energyData = pages.map(p => p.energy || 0).array();
+>
+> const chartData = {{
+>     type: 'line',
+>     data: {{
+>         labels: dates,
+>         datasets: [
+>             {{
+>                 label: 'Сон (часы)',
+>                 data: sleepData,
+>                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
+>                 borderColor: 'rgba(54, 162, 235, 1)',
+>                 borderWidth: 2,
+>                 fill: true,
+>                 tension: 0.3
+>             }},
+>             {{
+>                 label: 'Энергия (1-10)',
+>                 data: energyData,
+>                 backgroundColor: 'rgba(255, 99, 132, 0.2)',
+>                 borderColor: 'rgba(255, 99, 132, 1)',
+>                 borderWidth: 2,
+>                 fill: true,
+>                 tension: 0.3
+>             }}
+>         ]
+>     }},
+>     options: {{
+>         scales: {{
+>             y: {{ beginAtZero: true, max: 12 }}
+>         }}
+>     }}
+> }};
+>
+> window.renderChart(chartData, this.container);
+> ```
+
+> [!info]- Таблица настроения (Месяц)
+> ```dataview
+> TABLE 
+>     mood as "Настроение",
+>     energy as "Энергия",
+>     sleep_hours as "Сон"
+> FROM #daily
+> WHERE date <= this.date AND date > this.date - dur(30 days)
+> SORT date DESC
+> ```
+
 ## 🎯 Задачи на день
 {tasks_block}
 
@@ -84,6 +142,9 @@ tags: [daily]
 
 ### Что получилось хорошо / Что можно улучшить:
 - 
+
+### Общие сведения
+
 '''
     return template
 

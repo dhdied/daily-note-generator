@@ -17,7 +17,7 @@ async def get_weather(session: aiohttp.ClientSession) -> str:
     }
 
     try:
-        async with session.get(url, params=params, timeout=5) as response:
+        async with session.get(url, params=params, timeout=7) as response:
             if response.status == 200:
                 data = await response.json()
                 city = data["name"]
@@ -36,22 +36,25 @@ async def get_quote(session: aiohttp.ClientSession) -> str:
     '''
     url = "https://zenquotes.io/api/random"
     try:
-        async with session.get(url, timeout=5) as response:
+        async with session.get(url, timeout=7) as response:
             data = await response.json()
             return f'"{data[0]["q"]}" - {data[0]["a"]}'
     except Exception:
-        return "Сегондня без цитаты :D"
+        return "Сегодня без цитаты :D"
     
 async def get_exchange_rates(session: aiohttp.ClientSession) -> str:
     '''
-    Ассинхронный запрос курсов валют (ЦБ РФ)
+    Асинхронный запрос курсов валют (ЦБ РФ)
     '''
     url = "https://www.cbr-xml-daily.ru/daily_json.js"
     try:
-        async with session.get(url, timeout=5) as response:
-            data = await response.json()
+        async with session.get(url, timeout=7) as response:
+            # Добавляем content_type=None, чтобы отключить строгую проверку типа
+            data = await response.json(content_type=None)
+            
             usd = round(data["Valute"]["USD"]["Value"], 2)
             eur = round(data["Valute"]["EUR"]["Value"], 2)
             return f"USD: {usd} ₽ | EUR: {eur} ₽"
-    except Exception:
+    except Exception as e:
+        logging.error(f'Ошибка получения курсов валют: {e}')
         return "Курсы валют недоступны"
