@@ -61,7 +61,7 @@ date: {date_iso}
 weekday: {weekday_ru}
 week_number: {week_number}
 mood: 
-energy: 
+productivity: 
 sleep_hours: 
 tags: [daily]
 ---
@@ -77,7 +77,7 @@ tags: [daily]
 
 ## 📈 Аналитика состояния
 
-> [!chart]+ График сна и энергии (7 дней)
+> [!chart]+ Сон и продуктивность
 > ```dataviewjs
 > const pages = dv.pages("#daily")
 >     .filter(p => p.date <= dv.current().date && p.date > dv.current().date.minus({{ days: 7 }}))
@@ -85,7 +85,7 @@ tags: [daily]
 >
 > const dates = pages.map(p => p.date.toFormat("dd.MM")).array();
 > const sleepData = pages.map(p => p.sleep_hours || 0).array();
-> const energyData = pages.map(p => p.energy || 0).array();
+> const productivityData = pages.map(p => p.productivity || 0).array();
 >
 > const chartData = {{
 >     type: 'line',
@@ -102,8 +102,8 @@ tags: [daily]
 >                 tension: 0.3
 >             }},
 >             {{
->                 label: 'Энергия (1-10)',
->                 data: energyData,
+>                 label: 'Продуктивность (1-10)',
+>                 data: productivityData,
 >                 backgroundColor: 'rgba(255, 99, 132, 0.2)',
 >                 borderColor: 'rgba(255, 99, 132, 1)',
 >                 borderWidth: 2,
@@ -122,15 +122,70 @@ tags: [daily]
 > window.renderChart(chartData, this.container);
 > ```
 
-> [!info]- Таблица настроения (Месяц)
-> ```dataview
-> TABLE 
->     mood as "Настроение",
->     energy as "Энергия",
->     sleep_hours as "Сон"
-> FROM #daily
-> WHERE date <= this.date AND date > this.date - dur(30 days)
-> SORT date DESC
+> [!info]- Год в цветах
+> ```dataviewjs
+> const DateTime = dv.luxon.DateTime;
+> const colors = {{
+>      10: "#D0BCFC", 9: "#B796FE", 8: "#A981FF", 7: "#7B45F0",
+>      6: "#6631DB", 5: "#491AB1", 4: "#34117E", 3: "#221932",
+>      2: "#060407", 1: "#060407"
+> }};
+>
+> const legendItems = [
+>      {{ c: "#D0BCFC", t: "Отлично" }},
+>      {{ c: "#7B45F0", t: "Хорошо" }},
+>     {{ c: "#491AB1", t: "Нормально" }},
+>      {{ c: "#221932", t: "Плохо" }},
+>      {{ c: "#060407", t: "Ужасно" }}
+> ];
+>
+> const months = ["Я", "Ф", "М", "А", "М", "И", "И", "А", "С", "О", "Н", "Д"];
+> const currentYear = new Date().getFullYear();
+> const pages = dv.pages("#daily").where(p => {{
+>      if (!p.date) return false;
+>      const d = DateTime.fromISO(p.date.toString());
+>      return d.year === currentYear;
+> }});
+>
+> let html = "<div style='display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; justify-content: center;'>";
+> for (let item of legendItems) {{
+>      html += `<div style='display: flex; align-items: center; gap: 4px;'>
+>          <div style='width: 10px; height: 10px; border-radius: 2px; background-color: ${{item.c}}; border: 1px solid var(--background-modifier-border);'></div>
+>          <span style='font-size: 0.7em; color: var(--text-muted);'>${{item.t}}</span>
+>      </div>`;
+> }}
+> html += "</div>";
+>
+> html += "<div style='display: flex; justify-content: center; overflow-x: auto;'>";
+> html += "<table style='border-spacing: 0; border-collapse: collapse; border: none; line-height: 0;'>";
+> html += "<tr><th style='border: none;'></th>";
+> for(let m of months) {{
+>      html += `<th style='font-size: 0.7em; padding: 4px; color: var(--text-muted); font-weight: normal; border: none;'>${{m}}</th>`;
+> }}
+> html += "</tr>";
+> 
+> for(let d = 1; d <= 31; d++) {{
+>      html += `<tr><td style='font-size: 0.65em; padding-right: 5px; color: var(--text-muted); text-align: right; border: none; line-height: 1;'>${{d}}</td>`;
+>      for(let m = 1; m <= 12; m++) {{
+>          const dt = DateTime.local(currentYear, m, d);
+>          if(!dt.isValid) {{
+>              html += `<td style="border: none; padding: 0;"></td>`;
+>              continue;
+>          }}
+>          const dateStr = dt.toISODate();
+>          const page = pages.find(p => DateTime.fromISO(p.date.toString()).toISODate() === dateStr);
+>          let bgColor = "var(--background-modifier-border)";
+>          let opacity = "0.15";
+>          if (page && page.mood) {{
+>              bgColor = colors[page.mood] || bgColor;
+>             opacity = "1";
+>          }}
+>          html += `<td title="${{dateStr}} | Mood: ${{page?.mood || '?'}}" style="padding: 0; width: 16px; height: 16px; background-color: ${{bgColor}}; opacity: ${{opacity}}; border: 1px solid var(--background-primary); box-sizing: border-box;"></td>`;
+>      }}
+>      html += "</tr>";
+> }}
+> html += "</table></div>";
+> dv.paragraph(html);
 > ```
 
 ## 🎯 Задачи на день
